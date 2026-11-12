@@ -489,7 +489,7 @@ void calcCoeffFromParam( real *alpha , real *beta , real *gamma , double complex
   for( int poleIdx = 0 ; poleIdx < numPoles ; poleIdx++ )
   {
     dalpha[poleIdx] = ( 1 + 0.5 * dt * poles[poleIdx] ) / ( 1 - 0.5 * dt * poles[poleIdx] );
-    dbeta[poleIdx] = eps0 * residues[poleIdx] / ( 1 - 0.5 * dt * poles[poleIdx] );
+    dbeta[poleIdx] = 0.5 * eps0 * residues[poleIdx] / ( 1 - 0.5 * dt * poles[poleIdx] );
     sum = sum + creal( dbeta[poleIdx] );
   }
 
