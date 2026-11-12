@@ -2015,7 +2015,7 @@ void applyVoxelsToGrid( MediumIndex ***blockArray )
   int bbox[6];
   int flim[6][6];
   //bool includeBoundary[6] = { true  ,  true  ,  true  ,  true  ,  true  ,  true  };
-  bool includeBoundary[6] = { false  ,  false ,  false  ,  false  ,  false ,  false  };
+  bool includeBoundary[6] = { true, true, true, true, true, true };
   real eps_r1 , sigma1 , mu_r1 , eps_r2 , sigma2 , mu_r2;
   real eps_r3 , sigma3 , mu_r3 , eps_r4 , sigma4 , mu_r4;
   real eps_r , sigma , mu_r , alpha , beta , gamma;
@@ -2060,6 +2060,11 @@ void applyVoxelsToGrid( MediumIndex ***blockArray )
     for( j = bbox[YLO]  ; j <= bbox[YHI] ; j++ )
       blockArray[i][j][k] = blockArray[i][j][k-1];
 
+  /* Match the inner-grid field boundary policy. */
+  for( int face = XLO ; face <= ZHI ; face++ )
+    if( outerSurfaceType( face ) == BT_MUR )
+      includeBoundary[face] = false;
+
   /* Field limits.*/
   setFieldLimits( gibox , flim , includeBoundary );
   
@@ -2069,15 +2074,15 @@ void applyVoxelsToGrid( MediumIndex ***blockArray )
     for( int j = flim[field][YLO]  ; j <= flim[field][YHI] ; j++ )
       for( int k = flim[field][ZLO]  ; k <= flim[field][ZHI] ; k++ )
       {    
-        getMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i][j-1][k]   );
-        getMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k]     );
-        getMediumParameters( &eps_r3 , &sigma3 , &mu_r3 , blockArray[i][j][k-1]   );
-        getMediumParameters( &eps_r4 , &sigma4 , &mu_r4 , blockArray[i][j-1][k-1] );
+        getSimpleMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i][j-1][k]   );
+        getSimpleMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k]     );
+        getSimpleMediumParameters( &eps_r3 , &sigma3 , &mu_r3 , blockArray[i][j][k-1]   );
+        getSimpleMediumParameters( &eps_r4 , &sigma4 , &mu_r4 , blockArray[i][j-1][k-1] );
         eps_r = 0.25 * ( eps_r1 * dey[j-1] * dez[k] + eps_r2 * dey[j] * dez[k] + 
                          eps_r3 * dey[j] * dez[k-1] + eps_r4 * dey[j-1] * dez[k-1] ) / ( dhy[j] * dhz[k] ); 
         sigma = 0.25 * ( sigma1 * dey[j-1] * dez[k] + sigma2 * dey[j] * dez[k] + 
                          sigma3 * dey[j] * dez[k-1] + sigma4 * dey[j-1] * dez[k-1] ) / ( dhy[j] * dhz[k] );
-        calcCoeffFromParam( dt , eps_r , sigma , 1.0 , &alpha , &beta , &gamma );
+        calcCoeffFromParam( &alpha , &beta , &gamma , NULL , NULL , dt , eps_r , sigma , 1.0 , 0 , NULL , NULL );
         alphaEx[i][j][k] = alpha;
         betaEx[i][j][k] = SCALE_betaEx( beta , i , j , k );
       }
@@ -2087,15 +2092,15 @@ void applyVoxelsToGrid( MediumIndex ***blockArray )
     for( int j = flim[field][YLO]  ; j <= flim[field][YHI] ; j++ )
       for( int k = flim[field][ZLO]  ; k <= flim[field][ZHI] ; k++ )
       {
-        getMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i][j][k-1]   );
-        getMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k]     );
-        getMediumParameters( &eps_r3 , &sigma3 , &mu_r3 , blockArray[i-1][j][k]   );
-        getMediumParameters( &eps_r4 , &sigma4 , &mu_r4 , blockArray[i-1][j][k-1] );
+        getSimpleMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i][j][k-1]   );
+        getSimpleMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k]     );
+        getSimpleMediumParameters( &eps_r3 , &sigma3 , &mu_r3 , blockArray[i-1][j][k]   );
+        getSimpleMediumParameters( &eps_r4 , &sigma4 , &mu_r4 , blockArray[i-1][j][k-1] );
         eps_r = 0.25 * ( eps_r1 * dez[k-1] * dex[i] + eps_r2 * dez[k] * dex[i] + 
                          eps_r3 * dez[k] * dex[i-1] + eps_r4 * dez[k-1] * dex[i-1] ) / ( dhz[k] * dhx[i] ); 
         sigma = 0.25 * ( sigma1 * dez[k-1] * dex[i] + sigma2 * dez[k] * dex[i] + 
                          sigma3 * dez[k] * dex[i-1] + sigma4 * dez[k-1] * dex[i-1] ) / ( dhz[k] * dhx[i] ); 
-        calcCoeffFromParam( dt , eps_r , sigma , 1.0 , &alpha , &beta , &gamma );
+        calcCoeffFromParam( &alpha , &beta , &gamma , NULL , NULL , dt , eps_r , sigma , 1.0 , 0 , NULL , NULL );
         alphaEy[i][j][k] = alpha;
         betaEy[i][j][k] = SCALE_betaEy( beta , i , j , k );
       }
@@ -2105,15 +2110,15 @@ void applyVoxelsToGrid( MediumIndex ***blockArray )
     for( int j = flim[field][YLO]  ; j <= flim[field][YHI] ; j++ )
       for( int k = flim[field][ZLO]  ; k <= flim[field][ZHI] ; k++ )
       {
-        getMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i-1][j][k]   );
-        getMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k]     );
-        getMediumParameters( &eps_r3 , &sigma3 , &mu_r3 , blockArray[i][j-1][k]   );
-        getMediumParameters( &eps_r4 , &sigma4 , &mu_r4 , blockArray[i-1][j-1][k] );
+        getSimpleMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i-1][j][k]   );
+        getSimpleMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k]     );
+        getSimpleMediumParameters( &eps_r3 , &sigma3 , &mu_r3 , blockArray[i][j-1][k]   );
+        getSimpleMediumParameters( &eps_r4 , &sigma4 , &mu_r4 , blockArray[i-1][j-1][k] );
         eps_r = 0.25 * ( eps_r1 * dex[i-1] * dey[j] + eps_r2 * dex[i] * dey[j] + 
                          eps_r3 * dex[i] * dey[j-1] + eps_r4 * dex[i-1] * dey[j-1] ) / ( dhx[i] * dhy[j] ); 
         sigma = 0.25 * ( sigma1 * dex[i-1] * dey[j] + sigma2 * dex[i] * dey[j] + 
                          sigma3 * dex[i] * dey[j-1] + sigma4 * dex[i-1] * dey[j-1] ) / ( dhx[i] * dhy[j] );
-        calcCoeffFromParam( dt , eps_r , sigma , 1.0 , &alpha , &beta , &gamma );
+        calcCoeffFromParam( &alpha , &beta , &gamma , NULL , NULL , dt , eps_r , sigma , 1.0 , 0 , NULL , NULL );
         alphaEz[i][j][k] = alpha;
         betaEz[i][j][k] = SCALE_betaEz( beta , i , j , k );
       }
@@ -2123,10 +2128,10 @@ void applyVoxelsToGrid( MediumIndex ***blockArray )
     for( int j = flim[field][YLO]  ; j <= flim[field][YHI] ; j++ )
       for( int k = flim[field][ZLO]  ; k <= flim[field][ZHI] ; k++ )
       {
-        getMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i-1][j][k] );
-        getMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k] );
+        getSimpleMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i-1][j][k] );
+        getSimpleMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k] );
         mu_r = 2.0 * mu_r1 * mu_r2 / ( mu_r1 + mu_r2 ); 
-        calcCoeffFromParam( dt , 1.0 , 0.0 , mu_r , &alpha , &beta , &gamma );
+        calcCoeffFromParam( &alpha , &beta , &gamma , NULL , NULL , dt , 1.0 , 0.0 , mu_r , 0 , NULL , NULL );
         gammaHx[i][j][k] = SCALE_gammaHx( gamma , i , j , k );
       }
 
@@ -2135,10 +2140,10 @@ void applyVoxelsToGrid( MediumIndex ***blockArray )
     for( int j = flim[field][YLO]  ; j <= flim[field][YHI] ; j++ )
       for( int k = flim[field][ZLO]  ; k <= flim[field][ZHI] ; k++ )
       {
-        getMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i][j-1][k] );
-        getMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k] );
+        getSimpleMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i][j-1][k] );
+        getSimpleMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k] );
         mu_r = 2.0 * mu_r1 * mu_r2 / ( mu_r1 + mu_r2 ); 
-        calcCoeffFromParam( dt , 1.0 , 0.0 , mu_r , &alpha , &beta , &gamma );
+        calcCoeffFromParam( &alpha , &beta , &gamma , NULL , NULL , dt , 1.0 , 0.0 , mu_r , 0 , NULL , NULL );
         gammaHy[i][j][k] = SCALE_gammaHy( gamma , i , j , k );
       }
 
@@ -2147,10 +2152,10 @@ void applyVoxelsToGrid( MediumIndex ***blockArray )
     for( int j = flim[field][YLO]  ; j <= flim[field][YHI] ; j++ )
       for( int k = flim[field][ZLO]  ; k <= flim[field][ZHI] ; k++ )
       {
-        getMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i][j][k-1] );
-        getMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k] );
+        getSimpleMediumParameters( &eps_r1 , &sigma1 , &mu_r1 , blockArray[i][j][k-1] );
+        getSimpleMediumParameters( &eps_r2 , &sigma2 , &mu_r2 , blockArray[i][j][k] );
         mu_r = 2.0 * mu_r1 * mu_r2 / ( mu_r1 + mu_r2 ); 
-        calcCoeffFromParam( dt , 1.0 , 0.0 , mu_r , &alpha , &beta , &gamma );
+        calcCoeffFromParam( &alpha , &beta , &gamma , NULL , NULL , dt , 1.0 , 0.0 , mu_r , 0 , NULL , NULL );
         gammaHz[i][j][k] = SCALE_gammaHz( gamma , i , j , k );
       }
 
